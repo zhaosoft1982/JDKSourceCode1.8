@@ -686,7 +686,7 @@ public abstract class AbstractQueuedSynchronizer
                 if (ws == Node.SIGNAL) {
                     if (!compareAndSetWaitStatus(h, Node.SIGNAL, 0))
                         continue;            // loop to recheck cases
-                    unparkSuccessor(h);
+                    unparkSuccessor(h);      //唤醒后继节点
                 }
                 else if (ws == 0 &&
                          !compareAndSetWaitStatus(h, 0, Node.PROPAGATE))
@@ -1173,7 +1173,7 @@ public abstract class AbstractQueuedSynchronizer
      * UnsupportedOperationException}. This method is invoked
      * internally only within {@link ConditionObject} methods, so need
      * not be defined if conditions are not used.
-     *
+     * 该线程是否正在独占资源。只有用到condition才需要去实现它。
      * @return {@code true} if synchronization is held exclusively;
      *         {@code false} otherwise
      * @throws UnsupportedOperationException if conditions are not supported
@@ -1338,8 +1338,8 @@ public abstract class AbstractQueuedSynchronizer
      * @return the value returned from {@link #tryReleaseShared}
      */
     public final boolean releaseShared(int arg) {
-        if (tryReleaseShared(arg)) {
-            doReleaseShared();
+        if (tryReleaseShared(arg)) { //尝试释放资源
+            doReleaseShared(); //唤醒后继结点
             return true;
         }
         return false;
