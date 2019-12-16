@@ -16,5 +16,5 @@
 
 <a href="https://github.com/wupeixuan/JDKSourceCode1.8/blob/master/src/java/lang/ThreadLocal.java">ThreadLocal源码</a>
 
-![code](https://github.com/wupeixuan/JDKSourceCode1.8/blob/master/doc/code.png)
+<a href="https://www.cnblogs.com/waterystone/p/4920797.html">Java并发之AQS详解</a>
 
