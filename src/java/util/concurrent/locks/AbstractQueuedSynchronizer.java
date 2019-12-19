@@ -1687,6 +1687,12 @@ public abstract class AbstractQueuedSynchronizer
         /*
          * If cannot change waitStatus, the node has been cancelled.
          */
+        //尝试设置唤醒结点的waitStatus为0，即初始化状态
+        //如果设置失败，说明当期结点node的waitStatus已不为
+        //CONDITION状态，那么只能是结束状态了，因此返回false
+        //返回doSignal()方法中继续唤醒其他结点的线程，注意这里并
+        //不涉及并发问题，所以CAS操作失败只可能是预期值不为CONDITION，
+        //而不是多线程设置导致预期值变化，毕竟操作该方法的线程是持有锁的。
         if (!compareAndSetWaitStatus(node, Node.CONDITION, 0))
             return false;
 
@@ -1696,9 +1702,13 @@ public abstract class AbstractQueuedSynchronizer
          * attempt to set waitStatus fails, wake up to resync (in which
          * case the waitStatus can be transiently and harmlessly wrong).
          */
+        //加入同步队列并返回前驱结点p
         Node p = enq(node);
         int ws = p.waitStatus;
+        //判断前驱结点是否为结束结点(CANCELLED=1)或者在设置
+        //前驱节点状态为Node.SIGNAL状态失败时，唤醒被通知节点代表的线程
         if (ws > 0 || !compareAndSetWaitStatus(p, ws, Node.SIGNAL))
+            //唤醒node结点的线程
             LockSupport.unpark(node.thread);
         return true;
     }
@@ -1885,9 +1895,12 @@ public abstract class AbstractQueuedSynchronizer
          */
         private void doSignal(Node first) {
             do {
+                //移除条件等待队列中的第一个结点，
+                //如果后继结点为null，那么说没有其他结点将尾结点也设置为null
                 if ( (firstWaiter = first.nextWaiter) == null)
                     lastWaiter = null;
                 first.nextWaiter = null;
+                //如果被通知节点没有进入到同步队列并且条件等待队列还有不为空的节点，则继续循环通知后续结点
             } while (!transferForSignal(first) &&
                      (first = firstWaiter) != null);
         }
@@ -1951,9 +1964,11 @@ public abstract class AbstractQueuedSynchronizer
          *         returns {@code false}
          */
         public final void signal() {
+            //判断是否持有独占锁，如果不是抛出异常
             if (!isHeldExclusively())
                 throw new IllegalMonitorStateException();
             Node first = firstWaiter;
+            //唤醒等待队列第一个结点的线程
             if (first != null)
                 doSignal(first);
         }
