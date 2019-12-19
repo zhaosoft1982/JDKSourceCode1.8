@@ -232,6 +232,7 @@ public class ReentrantLock implements Lock, java.io.Serializable {
             final Thread current = Thread.currentThread();
             int c = getState();
             if (c == 0) {
+                //注意！！这里先判断同步队列是否存在结点
                 if (!hasQueuedPredecessors() &&
                     compareAndSetState(0, acquires)) {
                     setExclusiveOwnerThread(current);
@@ -525,7 +526,7 @@ public class ReentrantLock implements Lock, java.io.Serializable {
      *     }
      *   }
      * }}</pre>
-     *
+     * 查询当前线程保持此锁的次数。
      * @return the number of holds on this lock by the current thread,
      *         or zero if this lock is not held by the current thread
      */
@@ -609,7 +610,7 @@ public class ReentrantLock implements Lock, java.io.Serializable {
      * This method is designed to facilitate construction of
      * subclasses that provide more extensive lock monitoring
      * facilities.
-     *
+     * 返回目前拥有此锁的线程，如果此锁不被任何线程拥有，则返回 null。
      * @return the owner, or {@code null} if not owned
      */
     protected Thread getOwner() {
@@ -681,7 +682,7 @@ public class ReentrantLock implements Lock, java.io.Serializable {
      * not guarantee that a future {@code signal} will awaken any
      * threads.  This method is designed primarily for use in
      * monitoring of the system state.
-     *
+     * 查询是否有些线程正在等待与此锁有关的给定条件。
      * @param condition the condition
      * @return {@code true} if there are any waiting threads
      * @throws IllegalMonitorStateException if this lock is not held

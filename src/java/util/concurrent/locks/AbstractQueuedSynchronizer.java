@@ -477,6 +477,7 @@ public abstract class AbstractQueuedSynchronizer
          * re-acquire. And because conditions can only be exclusive,
          * we save a field by using special value to indicate shared
          * mode.
+         * 等待队列中的后继结点，这个与Condition有关，稍后会分析
          */
         Node nextWaiter;
 
@@ -629,6 +630,7 @@ public abstract class AbstractQueuedSynchronizer
      */
     private void setHead(Node node) {
         head = node;
+        //清空结点数据
         node.thread = null;
         node.prev = null;
     }
@@ -645,7 +647,7 @@ public abstract class AbstractQueuedSynchronizer
          * fails or if status is changed by waiting thread.
          */
         int ws = node.waitStatus;
-        if (ws < 0)
+        if (ws < 0)  //置零当前线程所在的结点状态，允许失败。
             compareAndSetWaitStatus(node, ws, 0);
 
         /*
@@ -654,11 +656,11 @@ public abstract class AbstractQueuedSynchronizer
          * traverse backwards from tail to find the actual
          * non-cancelled successor.
          */
-        Node s = node.next;
+        Node s = node.next;  //找到下一个需要唤醒的结点s
         if (s == null || s.waitStatus > 0) {
             s = null;
             for (Node t = tail; t != null && t != node; t = t.prev)
-                if (t.waitStatus <= 0)
+                if (t.waitStatus <= 0) //从这里可以看出，<=0的结点，都是还有效的结点。
                     s = t;
         }
         if (s != null)
@@ -796,17 +798,21 @@ public abstract class AbstractQueuedSynchronizer
      * @return {@code true} if thread should block
      */
     private static boolean shouldParkAfterFailedAcquire(Node pred, Node node) {
+        //获取当前结点的等待状态
         int ws = pred.waitStatus;
         if (ws == Node.SIGNAL)
             /*
              * This node has already set status asking a release
              * to signal it, so it can safely park.
+             * 如果为等待唤醒（SIGNAL）状态则返回true
              */
             return true;
         if (ws > 0) {
             /*
              * Predecessor was cancelled. Skip over predecessors and
              * indicate retry.
+             * 如果ws>0 则说明是结束状态，
+             * 遍历前驱结点直到找到没有结束状态的结点
              */
             do {
                 node.prev = pred = pred.prev;
@@ -817,6 +823,8 @@ public abstract class AbstractQueuedSynchronizer
              * waitStatus must be 0 or PROPAGATE.  Indicate that we
              * need a signal, but don't park yet.  Caller will need to
              * retry to make sure it cannot acquire before parking.
+             * 如果ws小于0又不是SIGNAL状态，
+             * 则将其设置为SIGNAL状态，代表该结点的线程正在等待唤醒。
              */
             compareAndSetWaitStatus(pred, ws, Node.SIGNAL);
         }
@@ -836,7 +844,10 @@ public abstract class AbstractQueuedSynchronizer
      * @return {@code true} if interrupted
      */
     private final boolean parkAndCheckInterrupt() {
+        //将当前线程挂起
         LockSupport.park(this);
+        //获取线程中断状态,interrupted()是判断当前中断状态，
+        //并非中断线程，因此可能true也可能false,并返回
         return Thread.interrupted();
     }
 
@@ -869,12 +880,14 @@ public abstract class AbstractQueuedSynchronizer
                     failed = false;
                     return interrupted;
                 }
+                //如果前驱结点不是head，判断是否挂起线程
                 if (shouldParkAfterFailedAcquire(p, node) &&
                     parkAndCheckInterrupt())
                     interrupted = true;
             }
         } finally {
             if (failed)
+                //最终都没能获取同步状态，结束该线程的请求
                 cancelAcquire(node);
         }
     }
