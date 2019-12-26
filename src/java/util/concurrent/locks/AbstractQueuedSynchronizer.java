@@ -728,11 +728,21 @@ public abstract class AbstractQueuedSynchronizer
          * unnecessary wake-ups, but only when there are multiple
          * racing acquires/releases, so most need signals now or soon
          * anyway.
+         *
+         * 尝试去唤醒队列中的下一个节点，如果满足如下条件：
+         * 调用者明确表示"传递"(propagate > 0),
+         * 或者h.waitStatus为PROPAGATE(被上一个操作设置)
+         * 并且下一个节点处于共享模式或者为null。
+         *
+         * 这两项检查中的保守主义可能会导致不必要的唤醒，但只有在有
+         * 有在多个线程争取获得/释放同步状态时才会发生，所以大多
+         * 数情况下会立马获得需要的信号
          */
         if (propagate > 0 || h == null || h.waitStatus < 0 ||
             (h = head) == null || h.waitStatus < 0) {
             Node s = node.next;
             if (s == null || s.isShared())
+                //唤醒后继节点，因为是共享模式，所以允许多个线程同时获取同步状态
                 doReleaseShared();
         }
     }
@@ -995,25 +1005,33 @@ public abstract class AbstractQueuedSynchronizer
      */
     private void doAcquireSharedInterruptibly(int arg)
         throws InterruptedException {
+        //创建共享模式的结点Node.SHARED，并加入同步队列
         final Node node = addWaiter(Node.SHARED);
         boolean failed = true;
         try {
+            //进入自旋操作
             for (;;) {
                 final Node p = node.predecessor();
+                //判断前驱结点是否为head
                 if (p == head) {
+                    //尝试获取同步状态
                     int r = tryAcquireShared(arg);
                     if (r >= 0) {
+                        //将当前线程结点设置为头结点并传播
                         setHeadAndPropagate(node, r);
                         p.next = null; // help GC
                         failed = false;
                         return;
                     }
                 }
+                //调整同步队列中node结点的状态并判断是否应该被挂起
+                //并判断是否需要被中断，如果中断直接抛出异常，当前结点请求也就结束
                 if (shouldParkAfterFailedAcquire(p, node) &&
                     parkAndCheckInterrupt())
                     throw new InterruptedException();
             }
         } finally {
+            //结束该结点线程的请求
             if (failed)
                 cancelAcquire(node);
         }
@@ -1314,9 +1332,12 @@ public abstract class AbstractQueuedSynchronizer
      */
     public final void acquireSharedInterruptibly(int arg)
             throws InterruptedException {
+        //判断是否中断请求
         if (Thread.interrupted())
             throw new InterruptedException();
+        //如果tryAcquireShared(arg)不小于0，则线程获取同步状态成功
         if (tryAcquireShared(arg) < 0)
+            //未获取成功加入同步队列等待
             doAcquireSharedInterruptibly(arg);
     }
 
@@ -1354,6 +1375,7 @@ public abstract class AbstractQueuedSynchronizer
      * @return the value returned from {@link #tryReleaseShared}
      */
     public final boolean releaseShared(int arg) {
+        //调用子类实现的tryReleaseShared方法尝试释放同步状态
         if (tryReleaseShared(arg)) { //尝试释放资源
             doReleaseShared(); //唤醒后继结点
             return true;

@@ -178,6 +178,7 @@ public class Semaphore implements java.io.Serializable {
             for (;;) {
                 int available = getState();
                 int remaining = available - acquires;
+                //判断信号量是否已小于0或者CAS执行是否成功
                 if (remaining < 0 ||
                     compareAndSetState(available, remaining))
                     return remaining;
@@ -190,6 +191,7 @@ public class Semaphore implements java.io.Serializable {
                 int next = current + releases;
                 if (next < current) // overflow
                     throw new Error("Maximum permit count exceeded");
+                //通过CAS更新state的值
                 if (compareAndSetState(current, next))
                     return true;
             }
@@ -224,8 +226,9 @@ public class Semaphore implements java.io.Serializable {
         NonfairSync(int permits) {
             super(permits);
         }
-
+        //Semaphore中非公平锁NonfairSync的tryAcquireShared()
         protected int tryAcquireShared(int acquires) {
+            //调用父类Sync的nonfairTryAcquireShared
             return nonfairTryAcquireShared(acquires);
         }
     }
@@ -242,6 +245,8 @@ public class Semaphore implements java.io.Serializable {
 
         protected int tryAcquireShared(int acquires) {
             for (;;) {
+                //这里是重点，先判断队列中是否有结点再执行
+                //同步状态获取。
                 if (hasQueuedPredecessors())
                     return -1;
                 int available = getState();
@@ -256,7 +261,7 @@ public class Semaphore implements java.io.Serializable {
     /**
      * Creates a {@code Semaphore} with the given number of
      * permits and nonfair fairness setting.
-     *
+     * 创建具有给定的许可数和非公平的公平设置的Semaphore。
      * @param permits the initial number of permits available.
      *        This value may be negative, in which case releases
      *        must occur before any acquires will be granted.
@@ -268,7 +273,7 @@ public class Semaphore implements java.io.Serializable {
     /**
      * Creates a {@code Semaphore} with the given number of
      * permits and the given fairness setting.
-     *
+     * 创建具有给定的许可数和给定的公平设置的Semaphore，true即为公平锁
      * @param permits the initial number of permits available.
      *        This value may be negative, in which case releases
      *        must occur before any acquires will be granted.
@@ -315,7 +320,7 @@ public class Semaphore implements java.io.Serializable {
     /**
      * Acquires a permit from this semaphore, blocking until one is
      * available.
-     *
+     * 从此信号量中获取许可，不可中断
      * <p>Acquires a permit, if one is available and returns immediately,
      * reducing the number of available permits by one.
      *
@@ -611,7 +616,7 @@ public class Semaphore implements java.io.Serializable {
 
     /**
      * Returns the current number of permits available in this semaphore.
-     *
+     * 返回此信号量中当前可用的许可数。
      * <p>This method is typically used for debugging and testing purposes.
      *
      * @return the number of permits available in this semaphore
@@ -622,7 +627,7 @@ public class Semaphore implements java.io.Serializable {
 
     /**
      * Acquires and returns all permits that are immediately available.
-     *
+     * 获取并返回立即可用的所有许可。
      * @return the number of permits acquired
      */
     public int drainPermits() {
@@ -673,7 +678,7 @@ public class Semaphore implements java.io.Serializable {
      * change dynamically while this method traverses internal data
      * structures.  This method is designed for use in monitoring of the
      * system state, not for synchronization control.
-     *
+     * 返回正在等待获取的线程的估计数目。
      * @return the estimated number of threads waiting for this lock
      */
     public final int getQueueLength() {
@@ -687,7 +692,7 @@ public class Semaphore implements java.io.Serializable {
      * estimate.  The elements of the returned collection are in no particular
      * order.  This method is designed to facilitate construction of
      * subclasses that provide more extensive monitoring facilities.
-     *
+     * 返回一个 collection，包含可能等待获取的线程。
      * @return the collection of threads
      */
     protected Collection<Thread> getQueuedThreads() {
